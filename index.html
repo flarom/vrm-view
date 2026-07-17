@@ -306,7 +306,10 @@
 
             // --- Global Variables for VRM and Animation ---
             let currentVrm = undefined;
-            let blinkInterval = null;
+            let blinkTimeout = null;
+            let blinkAnimating = false;
+            let headFollowEnabled = true;
+            let headFollowStrength = 0.5;
             let currentMixer = undefined;
             let currentAction = undefined;
             let vrmaAnimationClip = undefined; // Store the final THREE.AnimationClip
@@ -399,7 +402,8 @@
                                     vrm.blendShapeProxy.setValue("Joy", 1.0);
                                 }
 
-                                startAutoBlink(vrm);
+                                initLookAt(vrm);
+                                scheduleNextBlink();
 
                                 // Adjust ground shadow size to match model
                                 try {
@@ -407,8 +411,8 @@
                                         const box = new THREE.Box3().setFromObject(vrm.scene);
                                         const size = box.getSize(new THREE.Vector3());
                                         const maxDim = Math.max(size.x, size.z, 0.8);
-                                        const scale = maxDim * 1.4;
-                                        groundShadow.scale.set(scale, scale, 1);
+                                        const shadowScale = maxDim * 1.4;
+                                        groundShadow.scale.set(shadowScale, shadowScale, 1);
                                         groundShadow.position.x = vrm.scene.position.x;
                                         groundShadow.position.z = vrm.scene.position.z;
                                     }
@@ -647,7 +651,11 @@
                     currentMixer.update(deltaTime);
                 }
 
+                updateLookAt(deltaTime);
+                updateHeadFollow();
+
                 controls.update(); // Update orbit controls
+
                 renderer.render(scene, camera);
 
                 // Keep shadow centered under the current VRM
@@ -657,23 +665,127 @@
                 }
             }
 
-            function startAutoBlink(vrm) {
-                if (blinkInterval) clearInterval(blinkInterval);
+            // --- Blinking ---
+            function setBlink(value) {
+                if (!currentVrm) return;
+                if (currentVrm.expressionManager) {
+                    currentVrm.expressionManager.setValue("blink", value);
+                } else if (currentVrm.blendShapeProxy) {
+                    currentVrm.blendShapeProxy.setValue("Blink_L", value);
+                    currentVrm.blendShapeProxy.setValue("Blink_R", value);
+                }
+            }
 
-                const blink = () => {
-                    if (!vrm?.blendShapeProxy) return;
+            function playBlink({ double = false } = {}) {
+                if (blinkAnimating || !currentVrm) return;
+                blinkAnimating = true;
 
-                    vrm.blendShapeProxy.setValue("Blink_L", 1.0);
-                    vrm.blendShapeProxy.setValue("Blink_R", 1.0);
-                    console.log("blink!");
+                const duration = 120 + Math.random() * 80;
+                const start = performance.now();
 
-                    setTimeout(() => {
-                        vrm.blendShapeProxy.setValue("Blink_L", 0.0);
-                        vrm.blendShapeProxy.setValue("Blink_R", 0.0);
-                    }, 100);
-                };
+                function animate(now) {
+                    const t = Math.min((now - start) / duration, 1);
+                    let blinkValue;
+                    if (t < 0.25) {
+                        blinkValue = t / 0.25;
+                    } else {
+                        const k = (t - 0.25) / 0.75;
+                        blinkValue = 1 - k * k;
+                    }
+                    setBlink(blinkValue);
 
-                blinkInterval = setInterval(blink, 1000);
+                    if (t < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        setBlink(0);
+                        if (double) {
+                            setTimeout(() => {
+                                blinkAnimating = false;
+                                playBlink({ double: false });
+                            }, 80 + Math.random() * 60);
+                        } else {
+                            blinkAnimating = false;
+                        }
+                    }
+                }
+                requestAnimationFrame(animate);
+            }
+
+            function scheduleNextBlink() {
+                if (blinkTimeout) clearTimeout(blinkTimeout);
+                const interval = 2000 + Math.random() * 4000;
+                blinkTimeout = setTimeout(() => {
+                    const doubleBlinkChance = Math.random() < 0.2;
+                    playBlink({ double: doubleBlinkChance });
+                    scheduleNextBlink();
+                }, interval);
+            }
+
+            // --- Eye Tracking (lookAt) ---
+            function initLookAt(vrm) {
+                if (vrm && vrm.lookAt) {
+                    vrm.lookAt.target = camera;
+                    vrm.lookAt.autoUpdate = true;
+                }
+            }
+
+            function updateLookAt(delta) {
+                if (!currentVrm || !currentVrm.lookAt) return;
+                if (!currentVrm.lookAt.autoUpdate) return;
+                try { currentVrm.lookAt.update(delta); } catch (e) {}
+            }
+
+            // --- Head Follow Camera ---
+            function updateHeadFollow() {
+                if (!headFollowEnabled || !currentVrm?.humanoid) return;
+
+                const head = currentVrm.humanoid.getRawBoneNode("head");
+                const hips = currentVrm.humanoid.getRawBoneNode("hips");
+                if (!head || !hips) return;
+
+                const headWorldPos = new THREE.Vector3();
+                const camWorldPos = new THREE.Vector3();
+                head.getWorldPosition(headWorldPos);
+                camera.getWorldPosition(camWorldPos);
+
+                const targetDirWorld = camWorldPos.clone().sub(headWorldPos).normalize();
+
+                const hipsWorldQuat = hips.getWorldQuaternion(new THREE.Quaternion());
+                const invHipsWorldQuat = hipsWorldQuat.clone().invert();
+                const targetDirLocal = targetDirWorld.clone().applyQuaternion(invHipsWorldQuat).normalize();
+
+                const headWorldQuat = head.getWorldQuaternion(new THREE.Quaternion());
+                const headLocalQuat = invHipsWorldQuat.clone().multiply(headWorldQuat);
+
+                const forwardBase =
+                    currentVrm.meta.metaVersion === "0"
+                        ? new THREE.Vector3(0, 0, -1)
+                        : new THREE.Vector3(0, 0, 1);
+
+                const headForward = forwardBase.clone().applyQuaternion(headLocalQuat).normalize();
+
+                const flatTarget = targetDirLocal.clone();
+                flatTarget.y = 0;
+                flatTarget.normalize();
+
+                const flatForward = forwardBase.clone();
+                flatForward.y = 0;
+                flatForward.normalize();
+
+                const horizontalAngle = flatForward.angleTo(flatTarget);
+                const MAX_BACK_ANGLE = THREE.MathUtils.degToRad(140);
+                const FADE_RANGE = THREE.MathUtils.degToRad(30);
+                let backFactor = 1;
+                if (horizontalAngle > MAX_BACK_ANGLE) {
+                    backFactor = THREE.MathUtils.clamp(1 - (horizontalAngle - MAX_BACK_ANGLE) / FADE_RANGE, 0, 1);
+                }
+
+                const lookQuat = new THREE.Quaternion().setFromUnitVectors(headForward, targetDirLocal);
+
+                const parentWorldQuat = head.parent.getWorldQuaternion(new THREE.Quaternion());
+                const localTargetQuat = parentWorldQuat.clone().invert().multiply(hipsWorldQuat).multiply(lookQuat).multiply(headLocalQuat);
+
+                head.quaternion.slerp(localTargetQuat, headFollowStrength * backFactor);
             }
 
             function createGroundShadow(size = 1) {
@@ -694,7 +806,7 @@
                 tex.needsUpdate = true;
 
                 const geom = new THREE.PlaneGeometry(0.5, 0.5);
-                const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+                const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false });
                 const mesh = new THREE.Mesh(geom, mat);
                 mesh.rotation.x = -Math.PI / 2;
                 mesh.renderOrder = 999;
@@ -736,6 +848,8 @@
                     currentAction.stop();
                     currentAction = undefined;
                 }
+                if (blinkTimeout) clearTimeout(blinkTimeout);
+                blinkAnimating = false;
                 vrmaAnimationClip = undefined;
                 isPaused = false;
                 shouldRepeat = true;
