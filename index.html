@@ -28,6 +28,14 @@
                 padding: 0 10px;
                 width: 100%;
                 box-sizing: border-box;
+                transition: margin-left 0.3s ease;
+            }
+            .controls.shifted {
+                margin-left: 220px;
+                width: calc(100% - 220px);
+            }
+            .controls.shifted #sidebarToggle {
+                display: none;
             }
             .controls button {
                 display: flex;
@@ -42,7 +50,6 @@
                 padding-right: 18px;
                 margin-left: 3px;
                 font-size: 1em;
-                cursor: pointer;
                 font-family: "Material Symbols Outlined";
             }
             .controls button:hover {
@@ -78,17 +85,159 @@
                     opacity: 0;
                 }
             }
+
+            .sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 220px;
+                height: 100%;
+                background: var(--doc-bg);
+                z-index: 200;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+                box-sizing: border-box;
+                border-right: var(--border) 1px solid;
+                overflow-y: auto;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar h3 {
+                font-family: "Comic Neue", sans-serif;
+                margin: 0 0 10px;
+                font-size: 1.1em;
+            }
+            .sidebar .char-btn {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                width: 100%;
+                padding: 4px;
+                margin-bottom: 8px;
+                background: var(--button);
+                color: var(--text);
+                border: var(--border) 2px solid;
+                border-radius: 128px;
+                box-shadow: 0px 4px 0px var(--border);
+                font-family: "Comic Neue", sans-serif;
+                font-weight: bold;
+                font-size: 1em;
+                transition: 0.2s all;
+            }
+            .sidebar .char-btn:hover {
+                transform: translateY(-4px);
+                box-shadow: 0px 8px 0px var(--border);
+
+                img {
+                    animation: squish 1s ease-in-out infinite;
+                }
+            }
+            .sidebar .char-btn:active {
+                transform: translateY(2px);
+                box-shadow: 0px 2px 0px var(--border);
+            }
+            .sidebar .sidebar-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+
+                h3 {
+                    margin: 0;
+                }
+            }
+            .sidebar .close-btn {
+                display: flex;
+                transition: 0.2s all;
+                background-color: transparent;
+                color: var(--text);
+                border-radius: 999px;
+                border: 2px solid transparent;
+                padding: 8px;
+                font-size: 1em;
+                font-family: "Material Symbols Outlined";
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .sidebar .close-btn:hover {
+                border: 2px solid var(--border);
+            }
+
+            .sidebar .char-btn img {
+                width: 40px;
+                height: 40px;
+                border-radius: 128px;
+                object-fit: cover;
+                transition: 0.2s all;
+                border: 2px solid var(--border);
+            }
+
+            .sidebar .char-btn.active img {
+                width: 80px;
+                height: 40px;
+                object-fit: fill;
+            }
+
+            @keyframes squish {
+                0% {
+                    transform: scaleX(1.25) scaleY(1.25);
+                }
+
+                33% {
+                    transform: scaleX(2.0) scaleY(1.0);
+                }
+
+                66% {
+                    transform: scaleX(1.0) scaleY(2.0);
+                }
+
+                100% {
+                    transform: scaleX(1.25) scaleY(1.25);
+                }
+            }
         </style>
     </head>
 
     <body>
-        <div class="controls">
+        <div class="sidebar open" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Characters</h3>
+                <button title="Close sidebar" id="sidebarClose" class="close-btn">close</button>
+            </div>
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; height: 100%">
+                <button class="char-btn" data-vrm="VRM/lala.vrm" data-vrma="VRMA/lala.vrma" style="background-color: #64bac8">
+                    <img src="https://flarom.neocities.org/resources/characters/lala/profile.png" alt="Lala">
+                    Lala
+                </button>
+                <button class="char-btn" data-vrm="VRM/holly.vrm" data-vrma="VRMA/holly.vrma" style="background-color: #fce1e3">
+                    <img src="https://flarom.neocities.org/resources/characters/holly/profile.png" alt="Holly">
+                    Holly
+                </button>
+                <button class="char-btn" data-vrm="VRM/rivet.vrm" data-vrma="VRMA/rivet.vrma" style="background-color: #e49f7e">
+                    <img src="https://flarom.neocities.org/resources/characters/rivet/profile.png" alt="Rivet">
+                    Rivet
+                </button>
+                <button class="char-btn" data-vrm="VRM/huttia.vrm" data-vrma="VRMA/huttia.vrma" style="background-color: #ffa193">
+                    <img src="https://flarom.neocities.org/resources/characters/huttia/profile.png" alt="Huttia">
+                    Huttia
+                </button>
+            </div>
+        </div>
+
+        <div class="controls shifted">
             <div style="display: flex;">
+                <button title="View characters" id="sidebarToggle" style="align-items: center; gap: 8px;">groups <span style="font-family: 'Ubuntu';">Characters</span></button>
                 <button title="Pause animation" id="pauseBtn" disabled>pause</button>
             </div>
             <div style="display: flex;">
                 <button title="Toggle full screen" onclick="if (!document.fullscreenElement) { document.body.requestFullscreen(); } else { document.exitFullscreen(); }">fullscreen</button>
-                <button title="Stop rendering" onclick="document.exitFullscreen(); window.open('resources/papercrafts/lalaspin.gif', '_self')">close</button>
             </div>
         </div>
 
@@ -229,7 +378,16 @@
                                 // Remove previous VRM if one is loaded
                                 if (currentVrm) {
                                     scene.remove(currentVrm.scene);
-                                    currentVrm.dispose(); // Dispose of the previous VRM
+                                    currentVrm.scene.traverse((obj) => {
+                                        if (obj.geometry) obj.geometry.dispose();
+                                        if (obj.material) {
+                                            if (Array.isArray(obj.material)) {
+                                                obj.material.forEach((m) => m.dispose());
+                                            } else {
+                                                obj.material.dispose();
+                                            }
+                                        }
+                                    });
                                 }
 
                                 scene.add(vrm.scene);
@@ -555,14 +713,64 @@
             // Start the animation loop
             animate();
 
+            // --- Character Sidebar ---
+            const sidebar = document.getElementById("sidebar");
+            const sidebarToggle = document.getElementById("sidebarToggle");
+            const sidebarClose = document.getElementById("sidebarClose");
+            const controlsDiv = document.querySelector(".controls");
+            const charBtns = document.querySelectorAll(".char-btn");
+
+            function toggleSidebar(open) {
+                sidebar.classList.toggle("open", open);
+                controlsDiv.classList.toggle("shifted", open);
+            }
+
+            sidebarToggle.addEventListener("click", () => toggleSidebar(true));
+            sidebarClose.addEventListener("click", () => toggleSidebar(false));
+
+            function highlightActiveChar(vrmUrl) {
+                charBtns.forEach((btn) => {
+                    btn.classList.toggle("active", btn.dataset.vrm === vrmUrl);
+                });
+            }
+
+            async function switchCharacter(vrmUrl, vrmaUrl) {
+                if (currentAction) {
+                    currentAction.stop();
+                    currentAction = undefined;
+                }
+                vrmaAnimationClip = undefined;
+                isPaused = false;
+                shouldRepeat = true;
+
+                const newUrl = `${window.location.pathname}?model=${encodeURIComponent(vrmUrl)}&animation=${encodeURIComponent(vrmaUrl)}`;
+                window.history.pushState({}, "", newUrl);
+
+                showStatus("Loading...");
+                await loadVRM(vrmUrl);
+                updateButtons();
+                highlightActiveChar(vrmUrl);
+
+                if (vrmaUrl) {
+                    await loadVRMA(vrmaUrl);
+                    playAnimation();
+                }
+            }
+
+            charBtns.forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    switchCharacter(btn.dataset.vrm, btn.dataset.vrma);
+                });
+            });
+
             // --- Initial Load ---
-            // Load the fixed VRM model when the page loads
             window.addEventListener("DOMContentLoaded", async () => {
                 const vrmUrl = getVRMFromURL();
                 const vrmaUrl = getVRMAFromURL();
 
                 await loadVRM(vrmUrl);
                 updateButtons();
+                highlightActiveChar(vrmUrl);
 
                 if (vrmaUrl) {
                     await loadVRMA(vrmaUrl);
