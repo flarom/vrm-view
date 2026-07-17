@@ -100,16 +100,18 @@
                 flex-direction: column;
                 padding: 10px;
                 box-sizing: border-box;
-                border-right: var(--border) 1px solid;
+                border-right: var(--border) 2px dashed;
                 overflow-y: auto;
             }
             .sidebar.open {
-                transform: translateX(0);
+                transform: translateX(10px);
+                overflow: visible;
             }
             .sidebar h3 {
                 font-family: "Comic Neue", sans-serif;
-                margin: 0 0 10px;
+                margin: 0px;
                 font-size: 1.1em;
+                user-select: none;
             }
             .sidebar .char-btn {
                 display: flex;
@@ -128,7 +130,7 @@
                 font-size: 1em;
                 transition: 0.2s all;
             }
-            .sidebar .char-btn:hover {
+            .sidebar .char-btn:not(.active):hover {
                 transform: translateY(-4px);
                 box-shadow: 0px 8px 0px var(--border);
 
@@ -140,15 +142,16 @@
                 transform: translateY(2px);
                 box-shadow: 0px 2px 0px var(--border);
             }
+            .sidebar .char-btn.active {
+                box-shadow: none;
+                border: 2px dashed var(--border);
+                background-color: transparent !important;
+            }
             .sidebar .sidebar-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 10px;
-
-                h3 {
-                    margin: 0;
-                }
             }
             .sidebar .close-btn {
                 display: flex;
@@ -177,12 +180,6 @@
                 object-fit: cover;
                 transition: 0.2s all;
                 border: 2px solid var(--border);
-            }
-
-            .sidebar .char-btn.active img {
-                width: 80px;
-                height: 40px;
-                object-fit: fill;
             }
 
             @keyframes squish {
@@ -234,9 +231,9 @@
         <div class="controls shifted">
             <div style="display: flex;">
                 <button title="View characters" id="sidebarToggle" style="align-items: center; gap: 8px;">groups <span style="font-family: 'Ubuntu';">Characters</span></button>
-                <button title="Pause animation" id="pauseBtn" disabled>pause</button>
             </div>
             <div style="display: flex;">
+                <button title="Pause animation" id="pauseBtn" disabled>pause</button>
                 <button title="Toggle full screen" onclick="if (!document.fullscreenElement) { document.body.requestFullscreen(); } else { document.exitFullscreen(); }">fullscreen</button>
             </div>
         </div>
